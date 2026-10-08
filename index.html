@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FPS 감도 변환기 | Sensitivity Converter</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1e2229; --accent:#ff4655; --accent2:#5ee6c4;
+    --text:#eef0f3; --muted:#9aa3af; --border:#2a2f3a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:system-ui,'Apple SD Gothic Neo','Malgun Gothic','Nanum Gothic',sans-serif;
+    min-height:100vh;
+  }
+  .wrap{max-width:1100px; margin:0 auto; padding:40px 20px 80px;}
+  header{text-align:center; margin-bottom:36px;}
+  header h1{font-size:2.1rem; margin:0 0 8px; letter-spacing:-0.5px;}
+  header h1 span{color:var(--accent);}
+  header p{color:var(--muted); margin:0; font-size:0.98rem;}
+
+  .converter{
+    display:grid; grid-template-columns:1fr auto 1fr; gap:20px; align-items:start;
+    margin-bottom:28px;
+  }
+  @media (max-width:760px){ .converter{grid-template-columns:1fr;} .swap-btn{justify-self:center;} }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:24px;
+  }
+  .panel h2{margin:0 0 16px; font-size:1.05rem; color:var(--muted); font-weight:600;}
+  label{display:block; font-size:0.82rem; color:var(--muted); margin:14px 0 6px;}
+  label:first-of-type{margin-top:0;}
+  select, input{
+    width:100%; padding:11px 12px; border-radius:10px; border:1px solid var(--border);
+    background:var(--panel2); color:var(--text); font-size:0.98rem; outline:none;
+  }
+  select:focus, input:focus{border-color:var(--accent);}
+
+  .swap-btn{
+    align-self:center; background:var(--accent); color:#fff; border:none; width:46px; height:46px;
+    border-radius:50%; cursor:pointer; font-size:1.2rem; display:flex; align-items:center; justify-content:center;
+    margin-top:60px; transition:transform .15s;
+  }
+  .swap-btn:hover{transform:rotate(180deg);}
+
+  .result{
+    background:linear-gradient(135deg,var(--panel2),var(--panel)); border:1px solid var(--accent);
+    border-radius:16px; padding:22px; text-align:center; margin-bottom:28px;
+  }
+  .result .big{font-size:2.3rem; font-weight:800; color:var(--accent2);}
+  .result .label{color:var(--muted); font-size:0.85rem; margin-bottom:6px;}
+  .submetrics{display:flex; justify-content:center; gap:28px; margin-top:14px; flex-wrap:wrap;}
+  .submetrics div{font-size:0.88rem; color:var(--muted);}
+  .submetrics b{color:var(--text); font-size:1rem;}
+
+  .mode-toggle{display:flex; justify-content:center; gap:10px; margin-bottom:24px;}
+  .mode-btn{
+    background:var(--panel); border:1px solid var(--border); color:var(--muted);
+    padding:10px 22px; border-radius:999px; cursor:pointer; font-size:0.92rem; font-weight:600;
+    transition:all .15s;
+  }
+  .mode-btn.active{background:var(--accent); border-color:var(--accent); color:#fff;}
+
+  .table-section h2{font-size:1.1rem; margin-bottom:10px;}
+  .note{color:var(--muted); font-size:0.82rem; margin:6px 0 16px;}
+  table{width:100%; border-collapse:collapse; background:var(--panel); border-radius:12px; overflow:hidden;}
+  th, td{padding:10px 12px; text-align:left; font-size:0.88rem; border-bottom:1px solid var(--border);}
+  th{color:var(--muted); font-weight:600; background:var(--panel2);}
+  tr:last-child td{border-bottom:none;}
+
+  footer{text-align:center; color:var(--muted); font-size:0.78rem; margin-top:40px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>FPS <span>감도 변환기</span></h1>
+    <p>게임마다 조준 감도 계산 방식(yaw 값)이 달라요 — 여기서 cm/360° 기준으로 변환하세요</p>
+  </header>
+
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="modeNormalBtn" type="button">일반 감도</button>
+    <button class="mode-btn" id="modeZoomBtn" type="button">줌(스코프) 감도</button>
+  </div>
+
+  <div class="converter">
+    <div class="panel">
+      <h2>원본 (FROM)</h2>
+      <label>게임</label>
+      <select id="srcGame"></select>
+      <label>DPI</label>
+      <input type="number" id="srcDpi" value="800" min="1">
+      <label>기준(일반) 감도</label>
+      <input type="number" id="srcSens" value="0.35" step="0.001" min="0">
+      <div id="srcZoomWrap" style="display:none;">
+        <label>줌/ADS 배율 (Zoom Sensitivity Multiplier)</label>
+        <input type="number" id="srcZoom" value="1.0" step="0.001" min="0">
+      </div>
+    </div>
+
+    <button class="swap-btn" id="swapBtn" title="게임 서로 바꾸기">⇄</button>
+
+    <div class="panel">
+      <h2>대상 (TO)</h2>
+      <label>게임</label>
+      <select id="dstGame"></select>
+      <label>DPI</label>
+      <input type="number" id="dstDpi" value="800" min="1">
+      <label>기준(일반) 감도</label>
+      <input type="text" id="dstSensOut" readonly style="font-weight:700;color:var(--accent2);font-size:1.1rem;">
+      <div id="dstZoomWrap" style="display:none;">
+        <label style="margin-top:14px;color:var(--muted);">변환된 줌/ADS 배율</label>
+        <input type="text" id="dstZoomOut" readonly style="font-weight:700;color:var(--accent2);font-size:1.1rem;">
+      </div>
+    </div>
+  </div>
+
+  <div class="result">
+    <div class="label">물리적 360° 회전 거리 (마우스패드 이동 거리) — 두 게임 모두 동일</div>
+    <div class="big" id="cm360">0.00 cm</div>
+    <div class="submetrics">
+      <div><b id="in360">0.00</b> in/360°</div>
+      <div><b id="srcEdpi">0</b> Source eDPI</div>
+      <div><b id="dstEdpi">0</b> Target eDPI</div>
+    </div>
+  </div>
+
+  <div class="table-section">
+    <h2>게임별 Yaw 값 참고표</h2>
+    <p class="note">yaw(°/count)가 작을수록 같은 마우스 이동량 대비 화면이 덜 돌아갑니다. 커뮤니티에서 널리 쓰이는 검증값 기준이며, 패치로 바뀔 수 있어 참고용으로만 사용하세요.</p>
+    <table>
+      <thead><tr><th>게임</th><th>Yaw (°/count)</th><th>엔진/비고</th></tr></thead>
+      <tbody id="yawTable"></tbody>
+    </table>
+  </div>
+
+  <footer>cm/360° 공식: (2.54 × 360) ÷ (DPI × 감도 × Yaw) · 과녁 거리를 통일하면 모든 게임에서 같은 손 감각을 유지할 수 있어요.</footer>
+</div>
+
+<script>
+const GAMES = [
+  {name:"CS2 / CS:GO / CS 1.6", yaw:0.022, note:"Source/GoldSrc 엔진 기본값"},
+  {name:"Valorant", yaw:0.07, note:"Riot 공식 문서 값"},
+  {name:"Apex Legends", yaw:0.022, note:"Source 엔진 기반"},
+  {name:"Overwatch 2", yaw:0.0066, note:"Blizzard 커스텀"},
+  {name:"Call of Duty (MW/Warzone/BO6/MW4)", yaw:0.0066, note:"IW 엔진, OW2와 유사"},
+  {name:"Rainbow Six Siege", yaw:0.00572958, note:"Ubisoft AnvilNext"},
+  {name:"Fortnite", yaw:0.5555, note:"Unreal 엔진 (100% 기준)"},
+  {name:"PUBG", yaw:0.002222, note:"Unreal 엔진(수정)"},
+  {name:"Destiny 2", yaw:0.0066, note:"Tiger 엔진, COD/OW와 동일 계열"},
+  {name:"Halo Infinite", yaw:0.02222, note:"Slipspace 엔진"},
+  {name:"Rust", yaw:0.1799, note:"Unity 엔진"},
+  {name:"Escape from Tarkov", yaw:0.11, note:"Unity 엔진"},
+  {name:"The Finals", yaw:0.0066, note:"Unreal Engine 5"},
+  {name:"Titanfall 2", yaw:0.022, note:"Source 엔진 기반"},
+  {name:"Battlefield 2042", yaw:0.01335, note:"Frostbite 엔진"},
+  {name:"Quake Champions", yaw:0.0147, note:"id Tech 엔진"},
+  {name:"Team Fortress 2", yaw:0.022, note:"Source 엔진"},
+  {name:"Left 4 Dead 2", yaw:0.022, note:"Source 엔진"},
+  {name:"Garry's Mod", yaw:0.022, note:"Source 엔진"},
+  {name:"KovaaK's", yaw:0.022, note:"Source 유사 커스텀"},
+  {name:"Aim Lab", yaw:0.0066, note:"Unity 엔진"},
+];
+
+const srcGame = document.getElementById('srcGame');
+const dstGame = document.getElementById('dstGame');
+const yawTable = document.getElementById('yawTable');
+
+GAMES.forEach((g,i)=>{
+  srcGame.innerHTML += `<option value="${i}">${g.name}</option>`;
+  dstGame.innerHTML += `<option value="${i}">${g.name}</option>`;
+  yawTable.innerHTML += `<tr><td>${g.name}</td><td>${g.yaw}</td><td>${g.note}</td></tr>`;
+});
+dstGame.selectedIndex = 1;
+
+const srcDpi = document.getElementById('srcDpi');
+const srcSens = document.getElementById('srcSens');
+const srcZoom = document.getElementById('srcZoom');
+const dstDpi = document.getElementById('dstDpi');
+const dstSensOut = document.getElementById('dstSensOut');
+const dstZoomOut = document.getElementById('dstZoomOut');
+const cm360El = document.getElementById('cm360');
+const in360El = document.getElementById('in360');
+const srcEdpiEl = document.getElementById('srcEdpi');
+const dstEdpiEl = document.getElementById('dstEdpi');
+const srcZoomWrap = document.getElementById('srcZoomWrap');
+const dstZoomWrap = document.getElementById('dstZoomWrap');
+const modeNormalBtn = document.getElementById('modeNormalBtn');
+const modeZoomBtn = document.getElementById('modeZoomBtn');
+const resultLabel = document.querySelector('.result .label');
+
+let zoomMode = false;
+
+function setMode(zoom){
+  zoomMode = zoom;
+  modeNormalBtn.classList.toggle('active', !zoom);
+  modeZoomBtn.classList.toggle('active', zoom);
+  srcZoomWrap.style.display = zoom ? 'block' : 'none';
+  dstZoomWrap.style.display = zoom ? 'block' : 'none';
+  resultLabel.textContent = zoom
+    ? '줌/ADS 상태에서의 물리적 360° 회전 거리 — 두 게임 모두 동일'
+    : '물리적 360° 회전 거리 (마우스패드 이동 거리) — 두 게임 모두 동일';
+  calc();
+}
+modeNormalBtn.addEventListener('click', ()=>setMode(false));
+modeZoomBtn.addEventListener('click', ()=>setMode(true));
+
+function calc(){
+  const sg = GAMES[srcGame.value];
+  const dg = GAMES[dstGame.value];
+  const sDpi = parseFloat(srcDpi.value) || 0;
+  const sSens = parseFloat(srcSens.value) || 0;
+  const dDpi = parseFloat(dstDpi.value) || 0;
+
+  if(sDpi<=0 || dDpi<=0){ dstSensOut.value=""; return; }
+
+  // base conversion (always computed so hipfire sens stays matched)
+  const dSens = (sDpi*sSens*sg.yaw)/(dDpi*dg.yaw);
+  dstSensOut.value = dSens.toFixed(5).replace(/0+$/,'').replace(/\.$/,'');
+
+  if(!zoomMode){
+    const cm360 = (2.54*360)/(sDpi*sSens*sg.yaw || 1e-9);
+    const in360 = cm360/2.54;
+    cm360El.textContent = cm360.toFixed(2)+" cm";
+    in360El.textContent = in360.toFixed(2);
+    srcEdpiEl.textContent = Math.round(sDpi*sSens);
+    dstEdpiEl.textContent = Math.round(dDpi*dSens);
+  } else {
+    const sZoom = parseFloat(srcZoom.value) || 0;
+    // effective sensitivity while zoomed = base sens * zoom multiplier
+    const sEffSens = sSens * sZoom;
+    const cm360 = (2.54*360)/(sDpi*sEffSens*sg.yaw || 1e-9);
+    const in360 = cm360/2.54;
+    // target effective sens needed to keep the same cm/360 while zoomed
+    const dEffSens = (sDpi*sEffSens*sg.yaw)/(dDpi*dg.yaw);
+    const dZoom = dEffSens / (dSens || 1e-9);
+    dstZoomOut.value = dZoom.toFixed(4).replace(/0+$/,'').replace(/\.$/,'');
+    cm360El.textContent = cm360.toFixed(2)+" cm";
+    in360El.textContent = in360.toFixed(2);
+    srcEdpiEl.textContent = Math.round(sDpi*sEffSens);
+    dstEdpiEl.textContent = Math.round(dDpi*dEffSens);
+  }
+}
+
+[srcGame,srcDpi,srcSens,srcZoom,dstGame,dstDpi].forEach(el=>el.addEventListener('input',calc));
+
+document.getElementById('swapBtn').addEventListener('click',()=>{
+  const tmpGame = srcGame.value; srcGame.value = dstGame.value; dstGame.value = tmpGame;
+  const tmpDpi = srcDpi.value; srcDpi.value = dstDpi.value; dstDpi.value = tmpDpi;
+  srcSens.value = dstSensOut.value || srcSens.value;
+  if(zoomMode){ srcZoom.value = dstZoomOut.value || srcZoom.value; }
+  calc();
+});
+
+calc();
+</script>
+</body>
+</html>
