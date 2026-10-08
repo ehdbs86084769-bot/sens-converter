@@ -4,7 +4,7 @@
 게임마다 다른 마우스 감도 계산 방식(yaw 값)을 **cm/360°** 기준으로 통일해서,
 한 게임에서 쓰던 손 감각을 다른 게임에서도 그대로 유지할 수 있게 변환해주는 웹 도구입니다.
 
-🔗 **데모 링크**: (GitHub Pages 배포 후 여기에 주소 추가)
+🔗 **데모 링크**: https://github.com/ehdbs86084769-bot/sens-converter.git
 
 ## 기능
 - 20개 이상의 인기 FPS 게임 간 감도 변환 (CS2, Valorant, Apex, Overwatch 2, CoD, R6S, Fortnite, PUBG, Destiny 2, Halo Infinite, Rust, Tarkov, The Finals 등)
